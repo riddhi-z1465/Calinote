@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Interactive Calendar Notes</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg-color: linear-gradient(to bottom right, #dbeafe, #ede9fe);
+      --calendar-bg: white;
+      --text-color: #1e3a8a;
+      --header-color: #312e81;
+      --day-bg: #e0e7ff;
+      --day-hover-bg: #c4b5fd;
+      --today-bg: #3b82f6;
+      --modal-bg: white;
+      --textarea-bg: white;
+      --textarea-text: black;
+      --save-btn: #10b981;
+      --delete-btn: #ef4444;
+      --close-btn: #6366f1;
+    }
+
+    body.dark {
+      --bg-color: linear-gradient(to bottom right, #1e293b, #0f172a);
+      --calendar-bg: #1e293b;
+      --text-color: #f1f5f9;
+      --header-color: #f1f5f9;
+      --day-bg: #334155;
+      --day-hover-bg: #6366f1;
+      --today-bg: #2563eb;
+      --modal-bg: #1e293b;
+      --textarea-bg: #0f172a;
+      --textarea-text: white;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+      color: var(--text-color);
+      transition: background 0.5s ease;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 10px;
+    }
+
+    .clock {
+      font-size: 24px;
+      color: var(--text-color);
+    }
+
+    .theme-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 22px;
+      color: var(--text-color);
+      transition: transform 0.3s;
+    }
+
+    .theme-icon:hover {
+      transform: rotate(20deg);
+    }
+
+    .calendar {
+      background: var(--calendar-bg);
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .month-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .month-nav button {
+      background: #6366f1;
+      border: none;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .month-nav h2 {
+      margin: 0;
+      font-size: 24px;
+      color: var(--header-color);
+      flex-grow: 1;
+      text-align: center;
+    }
+
+    .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .day {
+      width: 40px;
+      height: 40px;
+      line-height: 40px;
+      border-radius: 50%;
+      background: var(--day-bg);
+      cursor: pointer;
+      transition: background 0.3s, transform 0.1s;
+      position: relative;
+      color: var(--text-color);
+    }
+
+    .day:hover {
+      background: var(--day-hover-bg);
+      color: white;
+      transform: scale(1.1);
+    }
+
+    .day:active {
+      transform: scale(0.95);
+    }
+
+    .has-note::after {
+      content: '📝';
+      position: absolute;
+      bottom: -5px;
+      right: -5px;
+      font-size: 14px;
+    }
+
+    .today {
+      background: var(--today-bg);
+      color: white;
+      font-weight: bold;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: var(--modal-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+      max-width: 320px;
+      width: 90%;
+      text-align: left;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateY(-50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-content h3 {
+      margin-top: 0;
+      color: var(--text-color);
+    }
+
+    .modal-content textarea {
+      width: 100%;
+      height: 80px;
+      margin-top: 10px;
+      resize: none;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      padding: 8px;
+      font-family: inherit;
+      background: var(--textarea-bg);
+      color: var(--textarea-text);
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    .modal-actions button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .save-btn { background: var(--save-btn); }
+    .delete-btn { background: var(--delete-btn); }
+    .close-btn { background: var(--close-btn); }
+
+    .status {
+      font-size: 13px;
+      margin-top: 6px;
+      color: var(--save-btn);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="clock" id="clock">Loading time...</div>
+    <button class="theme-icon" id="themeToggle" aria-label="Toggle theme">
+      <i class="fas fa-sun"></i>
+    </button>
+  </div>
+
+  <div class="calendar" id="calendar">
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">◀</button>
+      <h2 id="month-year"></h2>
+      <button onclick="changeMonth(1)">▶</button>
+    </div>
+    <div class="days" id="days-container"></div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="noteModal">
+    <div class="modal-content">
+      <h3 id="modalDate"></h3>
+      <textarea id="noteInput" placeholder="Write your notes here..."></textarea>
+      <div class="modal-actions">
+        <button class="save-btn" onclick="saveNote()">Save</button>
+        <button class="delete-btn" onclick="deleteNote()">Clear</button>
+        <button class="close-btn" onclick="closeModal()">Close</button>
+      </div>
+      <div class="status" id="statusMsg"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentDateKey = "";
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+
+    function updateTime() {
+      const now = new Date();
+      document.getElementById("clock").textContent = now.toLocaleTimeString();
+    }
+
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    function generateCalendar() {
+      const month = currentMonth;
+      const year = currentYear;
+
+      const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      document.getElementById("month-year").textContent = `${monthNames[month]} ${year}`;
+      const daysContainer = document.getElementById("days-container");
+      daysContainer.innerHTML = '';
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+      const isTodayMonth = today.getMonth() === month && today.getFullYear() === year;
+
+      for (let i = 0; i < firstDay; i++) {
+        daysContainer.appendChild(document.createElement('div'));
+      }
+
+      for (let i = 1; i <= lastDate; i++) {
+        const key = `${year}-${month + 1}-${i}`;
+        const day = document.createElement('div');
+        day.classList.add('day');
+        day.textContent = i;
+        if (isTodayMonth && i === today.getDate()) day.classList.add('today');
+        if (localStorage.getItem(key)) day.classList.add('has-note');
+        day.addEventListener('click', () => openModal(key, i, monthNames[month], year));
+        daysContainer.appendChild(day);
+      }
+    }
+
+    function changeMonth(offset) {
+      currentMonth += offset;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      } else if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      generateCalendar();
+    }
+
+    function openModal(key, day, month, year) {
+      currentDateKey = key;
+      document.getElementById("modalDate").textContent = `Notes for ${day} ${month} ${year}`;
+      document.getElementById("noteInput").value = localStorage.getItem(key) || "";
+      document.getElementById("statusMsg").textContent = "";
+      document.getElementById("noteModal").style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById("noteModal").style.display = "none";
+    }
+
+    function saveNote() {
+      const note = document.getElementById("noteInput").value.trim();
+      if (currentDateKey && note.length > 0) {
+        localStorage.setItem(currentDateKey, note);
+        document.getElementById("statusMsg").textContent = "✅ Note saved!";
+        generateCalendar();
+      } else {
+        document.getElementById("statusMsg").textContent = "⚠️ Note is empty.";
+      }
+    }
+
+    function deleteNote() {
+      if (currentDateKey && localStorage.getItem(currentDateKey)) {
+        localStorage.removeItem(currentDateKey);
+        document.getElementById("noteInput").value = "";
+        document.getElementById("statusMsg").textContent = "🗑️ Note deleted.";
+        generateCalendar();
+      }
+    }
+
+    // Theme toggle with icon
+    const themeToggleBtn = document.getElementById("themeToggle");
+    const themeIcon = themeToggleBtn.querySelector("i");
+
+    function applyTheme(theme) {
+      if (theme === "dark") {
+        document.body.classList.add("dark");
+        themeIcon.classList.replace("fa-sun", "fa-moon");
+      } else {
+        document.body.classList.remove("dark");
+        themeIcon.classList.replace("fa-moon", "fa-sun");
+      }
+      localStorage.setItem("calendar-theme", theme);
+    }
+
+    themeToggleBtn.addEventListener("click", () => {
+      const isDark = document.body.classList.contains("dark");
+      applyTheme(isDark ? "light" : "dark");
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const savedTheme = localStorage.getItem("calendar-theme") || "light";
+      applyTheme(savedTheme);
+      generateCalendar();
+    });
+  </script>
+
+</body>
+</html>
